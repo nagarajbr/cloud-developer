@@ -1,5 +1,7 @@
 import express from 'express';
+import {Request, Response} from 'express';
 import bodyParser from 'body-parser';
+
 import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
 (async () => {
@@ -9,6 +11,9 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   // Set the network port
   const port = process.env.PORT || 8082;
+
+  //regex to check if image_url is well formed
+  const image_url_regex = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpeg|jpg|gif|png|svg)/
   
   // Use the body parser middleware for post requests
   app.use(bodyParser.json());
@@ -29,6 +34,19 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   /**************************************************************************** */
 
+  app.get( "/filteredimage/", async ( req: Request, res: Response ) => {
+    let {image_url}: any = req.query;
+    if ( !image_url || !image_url.match(image_url_regex) ) {
+      return res.status(422)
+                .send('Unprocessable Entity: Image URL is missing or nor properly formed')
+    }
+    else {
+      filterImageFromURL(image_url).then((result) => {
+        res.sendFile(result);
+        res.on('finish', ()=>deleteLocalFiles([result]));
+      }).catch((err)=>res.status(422).send(err))
+    }
+  } );
   //! END @TODO1
   
   // Root Endpoint
